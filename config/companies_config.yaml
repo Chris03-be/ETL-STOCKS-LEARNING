@@ -1,0 +1,215 @@
+# Undervalued Stocks Analyzer - 10 Companies Configuration
+
+companies:
+  - ticker: INTC
+    name: Intel
+    sector: Semiconductors
+    industry: Semiconductor Manufacturing
+    exchange: NASDAQ
+    country: USA
+    market_cap_billions: 187.5
+    currency: USD
+    
+  - ticker: CI
+    name: Cigna Group
+    sector: Healthcare
+    industry: Insurance
+    exchange: NYSE
+    country: USA
+    market_cap_billions: 46.8
+    currency: USD
+    
+  - ticker: F
+    name: Ford
+    sector: Automotive
+    industry: Auto Manufacturing
+    exchange: NYSE
+    country: USA
+    market_cap_billions: 33.2
+    currency: USD
+    
+  - ticker: ADBE
+    name: Adobe
+    sector: Software
+    industry: Enterprise Software
+    exchange: NASDAQ
+    country: USA
+    market_cap_billions: 165.4
+    currency: USD
+    
+  - ticker: MO
+    name: Altria Group
+    sector: Tobacco
+    industry: Tobacco Products
+    exchange: NYSE
+    country: USA
+    market_cap_billions: 38.5
+    currency: USD
+    
+  - ticker: SIE
+    name: Siemens Energy
+    sector: Energy
+    industry: Energy Equipment
+    exchange: XETRA
+    country: Germany
+    market_cap_billions: 22.3
+    currency: EUR
+    
+  - ticker: NESTE
+    name: Neste Oyj
+    sector: Energy
+    industry: Oil & Gas Refining
+    exchange: HEX
+    country: Finland
+    market_cap_billions: 26.1
+    currency: EUR
+    
+  - ticker: CMCSA
+    name: Comcast
+    sector: Media
+    industry: Diversified Media & Telecom
+    exchange: NASDAQ
+    country: USA
+    market_cap_billions: 178.9
+    currency: USD
+    
+  - ticker: GDMK
+    name: Galderma Group
+    sector: Pharmaceuticals
+    industry: Pharmaceutical Manufacturing
+    exchange: SIX
+    country: Switzerland
+    market_cap_billions: 22.8
+    currency: CHF
+    
+  - ticker: "601318.SS"
+    name: Ping An Insurance
+    sector: Insurance
+    industry: Property & Casualty Insurance
+    exchange: Shanghai Stock Exchange
+    country: China
+    market_cap_billions: 45.2
+    currency: CNY
+
+# Metrics Configuration
+metrics:
+  valuation:
+    - pe_ratio
+    - pb_ratio
+    - peg_ratio
+    - dividend_yield
+    - fcf_yield
+    - price_to_sales
+    description: "Valuation metrics to compare with industry averages"
+    
+  technical:
+    - rsi
+    - macd
+    - bollinger_bands
+    - moving_avg_50
+    - moving_avg_200
+    - support_level
+    - resistance_level
+    description: "Technical indicators for trend analysis"
+    
+  fundamental:
+    - roe
+    - roa
+    - debt_to_equity
+    - current_ratio
+    - quick_ratio
+    - gross_margin
+    - net_margin
+    - free_cash_flow
+    - earnings_growth
+    description: "Fundamental metrics for company health"
+
+# Scoring Configuration
+scoring:
+  composite_score:
+    pe_score:
+      weight: 25
+      logic: "Lower P/E = higher score"
+      ranges:
+        - [0, 10]: 25
+        - [10, 15]: 20
+        - [15, 20]: 15
+        - [20, 25]: 10
+        - [25, null]: 0
+        
+    peg_score:
+      weight: 25
+      logic: "PEG < 1 = higher score"
+      ranges:
+        - [0, 0.5]: 25
+        - [0.5, 1.0]: 20
+        - [1.0, 1.5]: 10
+        - [1.5, null]: 0
+        
+    dividend_score:
+      weight: 25
+      logic: "Higher dividend yield = higher score"
+      ranges:
+        - [3.0, null]: 25
+        - [2.5, 3.0]: 20
+        - [2.0, 2.5]: 15
+        - [1.0, 2.0]: 10
+        - [0, 1.0]: 5
+        
+    technical_score:
+      weight: 25
+      logic: "Oversold (RSI < 30) = higher score"
+      ranges:
+        - [0, 30]: 25
+        - [30, 40]: 20
+        - [40, 50]: 10
+        - [50, null]: 5
+
+  grade:
+    A: [80, 100]
+    B: [60, 79]
+    C: [40, 59]
+    D: [20, 39]
+    F: [0, 19]
+
+  recommendation:
+    "STRONG BUY": [80, 100]
+    "BUY": [60, 79]
+    "HOLD": [40, 59]
+    "SELL": [20, 39]
+    "STRONG SELL": [0, 19]
+
+# Data Collection Configuration
+data_collection:
+  frequency: daily
+  time: "16:00 UTC"  # After market close
+  
+  sources:
+    - name: yahoo_finance
+      endpoint: "https://query2.finance.yahoo.com"
+      data: ["OHLCV", "fundamentals"]
+      free: true
+      
+    - name: alpha_vantage
+      endpoint: "https://www.alphavantage.co/query"
+      data: ["technical_indicators", "RSI", "MACD"]
+      requires_key: true
+      
+    - name: iex_cloud
+      endpoint: "https://cloud.iexapis.com"
+      data: ["fundamentals", "financial_ratios"]
+      requires_key: true
+
+# Historical Data
+historical:
+  min_days: 365
+  price_frequency: daily
+  quarterly_fundamentals: true
+  annual_fundamentals: true
+
+# Timezone
+timezone: UTC
+
+# Currency
+base_currency: USD
+currency_conversion: true
