@@ -1,93 +1,60 @@
-#!/usr/bin/env python3
-"""
-ETL-STOCKS-PREDICT - Main Entry Point
-Lance le pipeline ETL complet: Ingestion -> Transformation -> ML
-"""
-
-import os
-import sys
-import logging
-from pathlib import Path
+import dlt
+import yfinance as yf
+import pandas as pd
 from datetime import datetime
-
+import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# 1. Charger les variables d'environnement du fichier .env
 load_dotenv()
 
-# Add src to Python path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+# 2. Injection des identifiants Postgres pour DLT
+os.environ["DESTINATION__POSTGRES__CREDENTIALS__DATABASE"] = os.getenv("DB_NAME")
+os.environ["DESTINATION__POSTGRES__CREDENTIALS__PASSWORD"] = os.getenv("DB_PASS")
+os.environ["DESTINATION__POSTGRES__CREDENTIALS__USERNAME"] = os.getenv("DB_USER")
+os.environ["DESTINATION__POSTGRES__CREDENTIALS__HOST"] = os.getenv("DB_HOST")
+os.environ["DESTINATION__POSTGRES__CREDENTIALS__PORT"] = os.getenv("DB_PORT")
 
-from orchestration.scheduler import PipelineOrchestrator
+# 3. Liste des Tickers
+US_STOCKS = ['INTC', 'CI', 'F', 'ADBE', 'MO', 'CMCSA']
+EU_STOCKS = ['OR.PA', 'SIE.DE', 'NESN.SW', 'ENI.MI']
+ALL_TICKERS = US_STOCKS + EU_STOCKS
 
-# Configure logging
-LOG_DIR = Path('data/logs')
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_DIR / f"main_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
-
-
-def main():
-    """
-    Main function to run the pipeline.
-    """
-    logger.info("""
-    ╔════════════════════════════════════════════════════════════════╗
-    ║    ETL-STOCKS-PREDICT: Complete Data Pipeline                 ║
-    ║    Ingestion → Transformation → Machine Learning              ║
-    ╚════════════════════════════════════════════════════════════════╝
-    """)
-    
-    import argparse
-    
-    parser = argparse.ArgumentParser(
-        description='ETL-STOCKS-PREDICT Pipeline'
-    )
-    parser.add_argument(
-        '--schedule',
-        type=str,
-        default=None,
-        help='Schedule daily runs at specified time (HH:MM format, e.g., 22:00)'
-    )
-    parser.add_argument(
-        '--once',
-        action='store_true',
-        help='Run pipeline once and exit'
-    )
-    
-    args = parser.parse_args()
-    
-    try:
-        orchestrator = PipelineOrchestrator()
+@dlt.resource(name="raw_stock_prices", write_disposition="append")
+def fetch_market_data():
+    for ticker in ALL_TICKERS:
+        print(f" Extraction des données pour {ticker}...")
+        stock = yf.Ticker(ticker)
         
-        if args.once or (args.schedule is None):
-            # Run once
-            logger.info("Executing pipeline ONCE...")
-            result = orchestrator.run_complete_pipeline()
-            
-            logger.info(f"\nFinal Status: {result['overall_status']}")
-            logger.info(f"Duration: {result['total_duration_seconds']:.2f}s")
-            
-            exit(0 if result['overall_status'] in ['SUCCESS', 'PARTIAL_SUCCESS_AT_ML'] else 1)
+        # Historique de 5 jours pour assurer la continuité (Gap Detection)
+        df = stock.history(period="5d")
         
-        else:
-            # Schedule daily
-            logger.info(f"Starting scheduler - Daily runs at {args.schedule} UTC")
-            orchestrator.schedule_daily_run(args.schedule)
-    
-    except Exception as e:
-        logger.error(f"Fatal error: {str(e)}", exc_info=True)
-        exit(1)
-
+        if not df.empty:
+            df = df.reset_index()
+            
+            # Standardisation : colonnes en minuscules sans espaces pour Postgres
+            df.columns = [c.lower().replace(' ', '_') for c in df.columns]
+            
+            # Suppression du fuseau horaire pour éviter les erreurs d'insertion SQL
+            if 'date' in df.columns:
+                df['date'] = df['date'].dt.tz_localize(None)
+            
+            # Ajout des métadonnées
+            df['ticker'] = ticker
+            df['market_region'] = 'US' if ticker in US_STOCKS else 'EU'
+            df['extracted_at'] = datetime.now()
+            
+            yield df.to_dict(orient="records")
 
 if __name__ == "__main__":
-    main()
+    # 4. Configuration et lancement du pipeline DLT
+    pipeline = dlt.pipeline(
+        pipeline_name="yfinance_to_postgres",
+        destination="postgres",
+        dataset_name="bronze" # Les données iront dans le schéma bronze
+    )
+    
+    print(" Lancement du pipeline d'ingestion...")
+    load_info = pipeline.run(fetch_market_data())
+    print(" Ingestion terminée avec succès !")
+    print(load_info)
