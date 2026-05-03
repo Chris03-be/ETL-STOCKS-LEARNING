@@ -1,380 +1,185 @@
-# 🚀 ETL-STOCKS-PREDICT - Complete Architecture
+# 🚀 ETL-STOCKS-LEARNING - Architecture Medallion & Orchestration
 
-## Overview
+## 📋 Présentation
 
-A production-ready **ETL + Machine Learning pipeline** for analyzing undervalued stocks (US & Europe) with automated daily execution.
+Un pipeline **Data Engineering de bout en bout** (ETL) conçu pour l'ingestion, le nettoyage et l'analyse de données boursières, automatisé quotidiennement.
 
-```
+```text
 Yahoo Finance API
         ↓
    DLT Pipeline (Python)
         ↓
-PostgreSQL Bronze Layer (Raw)
+PostgreSQL Couche Bronze (Données Brutes)
         ↓
-   DBT Transformation
+   DBT Transformation (Nettoyage)
         ↓
-PostgreSQL Silver Layer (Cleaned)
+PostgreSQL Couche Silver (Données Standardisées)
         ↓
-PostgreSQL Gold Layer (Analytics)
+   DBT Transformation (Analytique)
         ↓
-  PyCaret ML Training
+PostgreSQL Couche Gold (Indicateurs Métier)
         ↓
-Price Predictions (7-day)
+   APScheduler Orchestration
         ↓
-  APScheduler Automation
-        ↓
-  Power BI Dashboards
+   Prêt pour Power BI / Tableaux de bord
 ```
 
 ---
 
-## 📊 Database Schema
+## 📊 Schéma de la Base de Données
 
-### Bronze Layer (Raw Data)
-```
-bronze.raw_stock_prices
-├─ ticker, date, open, high, low, close, volume, adj_close
-
-bronze.raw_fundamentals
-├─ ticker, date, pe_ratio, pb_ratio, dividend_yield, market_cap, eps
-
-bronze.raw_metadata
-├─ ticker, company_name, sector, country, exchange
+### Couche Bronze (Raw Data)
+```text
+bronze.stock_prices
+├─ date, open, high, low, close, volume, symbol
 ```
 
-### Silver Layer (Cleaned Data)
-```
-silver.stg_stock_prices_clean
-├─ Deduplicated, validated prices
-
-silver.stg_fundamentals_clean
-├─ Validated fundamental metrics
+### Couche Silver (Cleaned Data)
+```text
+silver.stg_stock_prices
+├─ Données dédoublonnées, typées proprement (numeric, date)
+├─ Renommage standardisé (ex: ticker -> symbol)
 ```
 
-### Gold Layer (Analytics)
-```
-gold.fct_market_analysis ⭐
-├─ ticker, date, close_price, volume
-├─ ma_50, ma_200                      (Technical)
-├─ volatility_30d, rsi_14             (Risk)
-├─ pe_ratio, pb_ratio, dividend_yield (Valuation)
-├─ is_undervalued, undervaluation_score
-
-gold.ai_forecast ⭐
-├─ ticker, forecast_date, actual_date
-├─ predicted_price, predicted_direction
-├─ prediction_confidence, prediction_error
-├─ model_version, training_date
-
-gold.dim_companies
-├─ Master dimension table
-
-gold.data_quality_checks
-├─ Validation results and metrics
-
-gold.pipeline_logs
-├─ Execution logs and monitoring
+### Couche Gold (Analytics) ⭐
+```text
+silver.gold_stock_indicators 
+├─ symbol, date, current_price, volume
+├─ daily_variation_pct (Variation journalière en %)
+├─ moving_avg_7d (Moyenne mobile sur 7 jours)
 ```
 
 ---
 
-## 🔄 Pipeline Stages
+## 🔄 Étapes du Pipeline
 
-### Stage 1: Ingestion (DLT)
-**File**: `src/ingestion/dlt_pipeline.py`
+### Étape 1 : Ingestion (DLT)
+**Fichier** : `src/ingestion/dlt_pipeline.py`
 
-✅ Fetches historical prices from Yahoo Finance  
-✅ Retrieves fundamentals (P/E, Dividend, etc)  
-✅ Loads to PostgreSQL Bronze layer  
-✅ Handles retries and errors gracefully  
+✅ Extraction des prix historiques via l'API Yahoo Finance  
+✅ Gestion automatique des schémas de base de données (Schema Evolution)  
+✅ Chargement dans la couche Bronze PostgreSQL  
 
-**Output**: 
-- 365+ days of OHLCV data
-- Fundamental metrics
+### Étape 2 : Transformation (dbt)
+**Dossier** : `src/transformation/dbt_project/`
 
-### Stage 2: Validation
-**File**: `src/ingestion/validators.py`
+✅ **Bronze → Silver** : Nettoyage, typage strict et standardisation  
+✅ **Silver → Gold** : Calcul d'indicateurs financiers complexes via fonctions de fenêtrage SQL (Window Functions)  
+✅ Génération automatique du catalogue de données et du graphe de dépendance (Lineage Graph)  
 
-✅ Schema validation (columns & types)  
-✅ Not null checks  
-✅ Range validation (price > 0, volume ≥ 0)  
-✅ Uniqueness checks (no duplicates)  
-✅ Outlier detection (Z-Score)  
-✅ Data freshness checks  
-✅ Gap detection (trading days)  
+### Étape 3 : Orchestration (APScheduler)
+**Fichier** : `src/run_scheduler.py`
 
-### Stage 3: Transformation (DBT)
-**Directory**: `src/transformation/dbt_project/`
-
-✅ Bronze → Silver: Clean & deduplicate  
-✅ Silver → Gold: Calculate metrics  
-- 50-day moving average
-- 200-day moving average
-- 30-day volatility
-- 14-day RSI
-- Undervaluation scoring (0-100)
-
-✅ Data quality tests  
-✅ Generate documentation  
-
-### Stage 4: Machine Learning (PyCaret)
-**File**: `src/ml_layer/predictive_model.py`
-
-✅ Feature engineering (lag, momentum, technical)  
-✅ Automated model selection (RF, XGBoost, GBR, LR)  
-✅ 7-day price prediction  
-✅ Confidence scoring  
-✅ Save predictions to PostgreSQL  
-✅ MLflow experiment tracking  
-
-**Output**:
-- Predicted prices for 7 days ahead
-- Direction predictions (UP/DOWN/NEUTRAL)
-- Confidence scores (0-100)
-- Model metrics (RMSE, MAE, R²)
-
-### Stage 5: Orchestration (APScheduler)
-**File**: `src/orchestration/scheduler.py`
-
-✅ Daily execution at 22:00 UTC  
-✅ Sequential pipeline execution  
-✅ Error handling and logging  
-✅ Database logging  
-✅ Manual or scheduled mode  
+✅ Exécution séquentielle automatisée (DLT d'abord, puis dbt)  
+✅ Gestion des erreurs de processus  
+✅ Planification flexible (ex: exécution post-fermeture des marchés)  
 
 ---
 
-## 🎯 Key Features
+## 🎯 Fonctionnalités Clés
 
-### Data Quality
-- ✅ 7-level validation suite
-- ✅ Quality metrics in database
-- ✅ Automated anomaly detection
-- ✅ Data freshness monitoring
-
-### Scalability
-- ✅ Modular design (Ingestion, Transform, ML)
-- ✅ Configurable via .env
-- ✅ Database-centric architecture
-- ✅ Parallel processing ready
-
-### Security
-- ✅ Environment variable management
-- ✅ No hardcoded credentials
-- ✅ Secure database connections
-- ✅ Error handling without data leakage
-
-### Monitoring
-- ✅ Comprehensive logging
-- ✅ Pipeline execution logs in database
-- ✅ Data quality metrics
-- ✅ ML model performance tracking
+*   **Architecture Medallion :** Séparation stricte entre les données brutes, nettoyées et analytiques.
+*   **Infrastructure as Code (Data) :** Utilisation de dbt pour versionner et tester les transformations SQL.
+*   **Sécurité :** Gestion des identifiants de base de données via variables d'environnement (`.env`).
+*   **Documentation Interactive :** Auto-génération du catalogue de données via `dbt docs`.
 
 ---
 
-## 📈 Companies Analyzed
+## 🚀 Démarrage Rapide
 
-**US**: INTC, CI, F, ADBE  
-**EU**: OR.PA (L'Oréal), SIE.DE (Siemens Energy)  
-
----
-
-## 🚀 Quick Start
-
-### 1. Setup
+### 1. Installation
 ```bash
-# Install dependencies
-pip install -r requirements_complete.txt
+# Créer et activer l'environnement virtuel
+python -m venv .venv
+source .venv/Scripts/activate  # Sur Windows : .venv\Scripts\activate
 
-# Setup PostgreSQL
-psql -U postgres -f scripts/01_create_schema.sql
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your database credentials
+# Installer les dépendances
+pip install -r requirements.txt
 ```
 
-### 2. Run Once
+### 2. Configuration
+Créez un fichier `.env` à la racine :
+```env
+DESTINATION__POSTGRES__CREDENTIALS="postgresql://votre_user:votre_mdp@localhost:5432/etl_stocks"
+```
+
+Configurez votre profil dbt dans `~/.dbt/profiles.yml` :
+```yaml
+etl_stocks:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      user: votre_user
+      pass: 'votre_mdp'
+      port: 5432
+      dbname: etl_stocks
+      schema: silver
+      threads: 1
+```
+
+### 3. Exécution
+
+**Mode Automatique (Recommandé) :**
 ```bash
-python main.py --once
+python run_scheduler.py
 ```
 
-### 3. Schedule Daily
+**Mode Manuel :**
 ```bash
-# Daily at 22:00 UTC
-python main.py --schedule 22:00
-
-# Or use different time
-python main.py --schedule 20:00
-```
-
----
-
-## 📊 Power BI Integration
-
-### Essential Measures
-
-1. **Price Variance**
-   ```dax
-   = SUM('Forecast'[predicted_price]) - SUM('Forecast'[actual_price])
-   ```
-
-2. **Price Variance %**
-   ```dax
-   = (SUM('Forecast'[predicted_price]) - SUM('Forecast'[actual_price])) 
-   / SUM('Forecast'[actual_price])
-   ```
-
-3. **Undervaluation Score**
-   ```dax
-   = AVERAGE('Market Analysis'[undervaluation_score])
-   ```
-
-4. **Top 3 Undervalued (US)**
-   ```dax
-   = TOPN(3, FILTER('Companies', 'Companies'[region] = "US"), 
-   'Market Analysis'[undervaluation_score])
-   ```
-
-5. **Top 3 Undervalued (EU)**
-   ```dax
-   = TOPN(3, FILTER('Companies', 'Companies'[region] = "EU"), 
-   'Market Analysis'[undervaluation_score])
-   ```
-
----
-
-## 📋 File Structure
-
-```
-ETL-STOCKS-LEARN/
-├── main.py                              # Entry point
-├── requirements_complete.txt
-├── .env.example
-│
-├── scripts/
-│   └── 01_create_schema.sql            # Database setup
-│
-├── src/
-│   ├── ingestion/
-│   │   ├── dlt_pipeline.py             # DLT pipeline
-│   │   ├── validators.py               # Data validation
-│   │   └── fetchers.py                 # Yahoo Finance fetcher
-│   │
-│   ├── transformation/
-│   │   ├── dbt_runner.py               # DBT executor
-│   │   └── dbt_project/                # DBT models
-│   │       ├── dbt_project.yml
-│   │       ├── models/
-│   │       └── tests/
-│   │
-│   ├── ml_layer/
-│   │   ├── predictive_model.py         # PyCaret model
-│   │   └── model_registry.py           # MLflow tracking
-│   │
-│   └── orchestration/
-│       └── scheduler.py                # APScheduler
-│
-├── models/                              # Saved ML models
-├── data/
-│   └── logs/                           # Execution logs
-└── config/
-    └── companies_config.yaml           # Company configuration
-```
-
----
-
-## 🔍 Monitoring & Logging
-
-### Pipeline Execution Log
-```
-2026-04-24 22:00:00 - Ingestion started
-2026-04-24 22:05:30 - ✓ Loaded 2,340 records to Bronze
-2026-04-24 22:06:00 - Transformation started (DBT run)
-2026-04-24 22:08:45 - ✓ Transformed to Silver & Gold
-2026-04-24 22:09:15 - ML Training started
-2026-04-24 22:15:30 - ✓ Trained model (RMSE: 2.45, R²: 0.87)
-2026-04-24 22:16:00 - ✓ Generated 6 predictions
-2026-04-24 22:16:30 - Pipeline completed (Total: 16m 30s)
-```
-
-### Query Data Quality Metrics
-```sql
-SELECT 
-    check_name, 
-    check_type, 
-    total_records, 
-    failed_records, 
-    pass_rate,
-    check_date
-FROM gold.data_quality_checks
-ORDER BY check_date DESC
-LIMIT 10;
-```
-
-### Query Model Performance
-```sql
-SELECT 
-    ticker,
-    predicted_price,
-    actual_price,
-    ABS(predicted_price - actual_price) as error,
-    model_version,
-    training_date
-FROM gold.ai_forecast
-WHERE actual_date <= CURRENT_DATE
-ORDER BY forecast_date DESC;
-```
-
----
-
-## 🛠️ Troubleshooting
-
-### Database Connection Failed
-```bash
-# Check PostgreSQL is running
-psql -U etl_user -d etl_stocks -h localhost
-
-# Verify .env credentials
-cat .env | grep DB_
-```
-
-### DLT Pipeline Error
-```bash
-# Clear DLT state
-rm -rf .dlt/
-
-# Re-run
 python src/ingestion/dlt_pipeline.py
-```
-
-### DBT Models Failed
-```bash
-# Test connection
 cd src/transformation/dbt_project
-dbt debug
-
-# Run specific model
-dbt run --select fct_market_analysis
-```
-
-### ML Training OOM Error
-```python
-# Reduce training data in predictive_model.py
-df_raw = predictor.load_training_data(lookback_days=90)  # Instead of 365
+dbt run
 ```
 
 ---
 
-## 📚 Next Steps
+## 📊 Intégration Power BI
 
-1. ✅ Run `python main.py --once` to test everything
-2. ✅ Check `gold.pipeline_logs` for execution details
-3. ✅ Query `gold.fct_market_analysis` for analysis
-4. ✅ Review `gold.ai_forecast` for predictions
-5. ✅ Create Power BI dashboard from Gold layer
-6. ✅ Schedule daily runs: `python main.py --schedule 22:00`
+La table `gold_stock_indicators` est optimisée pour la Business Intelligence. Voici quelques mesures DAX que vous pouvez brancher directement sur cette table :
+
+1. **Volume Total Échangé**
+   ```dax
+   = SUM('gold_stock_indicators'[volume])
+   ```
+
+2. **Variation Moyenne Journalière**
+   ```dax
+   = AVERAGE('gold_stock_indicators'[daily_variation_pct])
+   ```
 
 ---
 
-**Production Ready! 🚀**
+## 📋 Structure du Projet
+```text
+ETL-STOCKS-LEARNING/
+├── .env                           # Variables d'environnement
+├── README.md                      # Documentation
+├── requirements.txt               # Dépendances Python
+├── run_scheduler.py               # Orchestrateur APScheduler
+└── src/
+    ├── ingestion/
+    │   └── dlt_pipeline.py        # Pipeline d'extraction DLT
+    └── transformation/
+        └── dbt_project/
+            ├── dbt_project.yml    # Configuration dbt
+            └── models/
+                ├── staging/       # Modèles Silver (Nettoyage)
+                │   └── stg_stock_prices.sql
+                └── gold/          # Modèles Gold (Analytique)
+                    └── gold_stock_indicators.sql
+```
+
+---
+
+## 📚 Prochaines Évolutions (Roadmap)
+*   [ ] Intégration de tests de qualité de données stricts (dbt tests).
+*   [ ] Ajout d'une couche Machine Learning (PyCaret) pour la prédiction de prix à 7 jours.
+*   [ ] Déploiement de l'orchestrateur sur le Cloud.
+```
+
+***
+
+### 💡 Le Mot du Data Engineer
+Ce README correspond à 100% à la réalité de ton code d'aujourd'hui. Remplace le contenu de ton `README.md` actuel par celui-ci, refais un commit (`git add README.md`, `git commit -m "docs: refonte du README à l'image de la V1"`, `git push`), et ton portfolio sera d'une précision chirurgicale !
