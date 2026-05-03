@@ -1,524 +1,191 @@
-# 🏗️ Architecture - Undervalued Stocks Analyzer
+C'est une vision d'architecture absolument fantastique pour une V2 ! Le document que tu as généré montre que tu as parfaitement compris où ce projet peut aller (avec Alpha Vantage, le scoring complexe, les MACD, etc.). 
 
-## System Overview
+Cependant, comme pour le `README.md` général, si tu mets ce fichier `README_ARCHITECTURE.md` sur ton GitHub aujourd'hui, un recruteur technique va chercher les dossiers de "Scoring" ou l'intégration "Alpha Vantage" dans ton code et ne les trouvera pas. 
 
-```
+Il faut que ton architecture soit le **reflet exact et honnête** de ton code actuel (V1), tout en gardant tes superbes idées pour la section "Roadmap/Évolutions".
+
+Voici ton fichier `README_ARCHITECTURE.md` réécrit pour coller **à 100% à la réalité de ton projet actuel**, tout en gardant ce format professionnel et visuel que tu as proposé :
+
+***
+
+```markdown
+# 🏗️ Architecture du Système - ETL-STOCKS-LEARNING
+
+Ce document détaille l'architecture technique, les flux de données et les schémas de base de données de la version actuelle (V1) du projet.
+
+## 🗺️ Vue d'Ensemble du Système
+```text
 ┌─────────────────────────────────────────────────────────────────┐
-│           UNDERVALUED STOCKS ANALYZER ARCHITECTURE              │
+│           ETL-STOCKS-LEARNING : ARCHITECTURE MEDALLION          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│ LAYER 1: INGESTION (APIs + DLT)                                 │
-│ ├─ Yahoo Finance API (OHLCV data)                              │
-│ ├─ Alpha Vantage (Technical indicators)                        │
-│ ├─ IEX Cloud (Fundamentals)                                    │
-│ └─ DLT (Automated loading)                                     │
-│      └─ Fetch → Validate → Load Bronze                        │
-│                                                                 │
-│        10 Companies: INTC, CI, F, ADBE, MO, SIE, NESTE,       │
-│                     CMCSA, GDMK, 601318.SS                    │
+│ LAYER 1: INGESTION (API + DLT)                                  │
+│ ├─ Yahoo Finance API (Données OHLCV)                            │
+│ └─ DLT (Data Load Tool)                                         │
+│      └─ Extraction → Typage dynamique → Chargement Bronze       │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
 │ LAYER 2: STORAGE (PostgreSQL)                                   │
 │                                                                 │
-│ BRONZE SCHEMA                                                   │
-│ ├─ raw_stock_prices              (OHLCV data, 365+ days)      │
-│ ├─ raw_fundamentals              (P/E, Dividend, etc)         │
-│ ├─ raw_technical_indicators      (RSI, MACD, etc)            │
-│ └─ raw_company_metrics           (ROE, ROA, Margins, etc)     │
+│ BRONZE SCHEMA (Données Brutes)                                  │
+│ └─ raw_stock_prices              (Données OHLCV historiques)    │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
-│ SILVER SCHEMA                                                   │
-│ ├─ stg_stock_prices_clean        (Deduplicated, validated)    │
-│ ├─ stg_fundamentals_clean        (Standardized)               │
-│ ├─ stg_technical_indicators_clean (Computed)                 │
-│ └─ stg_metrics_clean             (Normalized)                 │
+│ SILVER SCHEMA (Données Nettoyées)                               │
+│ └─ stg_stock_prices              (Dédoublonné, typé, casté)     │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
-│ GOLD SCHEMA (Analytics)                                         │
-│ ├─ fct_valuation_metrics         (P/E, P/B, PEG, Div Yield) │
-│ ├─ fct_technical_analysis        (RSI, MACD, Bollinger, MA)  │
-│ ├─ fct_undervaluation_scoring    (Score 0-100, Grade A-F)   │
-│ ├─ fct_peer_comparison           (Industry benchmarks)        │
-│ └─ dim_companies                 (10 companies master)         │
+│ GOLD SCHEMA (Analytique / BI)                                   │
+│ └─ gold_stock_indicators         (Moyennes mobiles, variations) │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
 │ LAYER 3: TRANSFORMATION (DBT)                                   │
-│ ├─ SQL models for each layer                                   │
-│ ├─ Data quality tests                                          │
-│ ├─ Documentation & lineage                                     │
-│ └─ Materialization: views & tables                            │
+│ ├─ Modèles SQL (Staging & Marts)                                │
+│ ├─ Génération du Lineage Graph (DAG)                            │
+│ └─ Matérialisation en Vues (Views)                              │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
-│ LAYER 4: VISUALIZATION (Power BI)                              │
-│ ├─ Executive Dashboard           (Top opportunities)           │
-│ ├─ Valuation Analysis            (P/E, P/B, Div, FCF)        │
-│ ├─ Technical Analysis            (Charts, indicators)          │
-│ ├─ Undervaluation Scoring        (Rankings, grades)           │
-│ └─ Peer Comparison               (Heatmaps, comparisons)      │
+│ LAYER 4: ORCHESTRATION (APScheduler)                            │
+│ ├─ Exécution planifiée (Script Python autonome)                 │
+│ ├─ Séquence stricte : Ingestion DLT ➔ Attente ➔ Run dbt         │
+│ └─ Gestion des erreurs et logs de base                          │
 │                                                                 │
 │              ↓                                                  │
 │                                                                 │
-│ LAYER 5: ORCHESTRATION (APScheduler)                           │
-│ ├─ Daily 4 PM UTC trigger                                      │
-│ ├─ Sequential task execution:                                  │
-│ │   1. DLT ingestion                                          │
-│ │   2. DBT transformations                                    │
-│ │   3. Data quality tests                                     │
-│ │   4. Error handling & logging                               │
-│ └─ Auto-refresh Power BI                                       │
-│                                                                 │
+│ LAYER 5: VISUALIZATION (Power BI - Prêt à l'emploi)             │
+│ ├─ Analyse des volumes échangés                                 │
+│ └─ Suivi de la volatilité et des tendances (Moyenne 7j)         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Data Flow
+## 🔄 Flux de Données Détaillé
 
-```
-┌──────────────────┐
-│  APIs (Daily)    │
-│  Yahoo Finance   │
-│  Alpha Vantage   │
-│  IEX Cloud       │
-└────────┬─────────┘
-         │
-         ↓
-┌──────────────────────┐
-│  DLT Pipeline        │
-│  ├─ Fetch data       │
-│  ├─ Validate schema  │
-│  ├─ Standardize      │
-│  └─ Load Bronze      │
-└────────┬─────────────┘
-         │
-         ↓
-┌──────────────────────┐
-│  PostgreSQL Bronze   │
-│  ├─ raw_prices       │
-│  ├─ raw_fundamentals │
-│  ├─ raw_technical    │
-│  └─ raw_metrics      │
-└────────┬─────────────┘
-         │
-         ↓ (DBT: dbt run)
-┌──────────────────────┐
-│  PostgreSQL Silver   │
-│  ├─ stg_prices_clean │
-│  ├─ stg_fund_clean   │
-│  ├─ stg_tech_clean   │
-│  └─ stg_metrics_clean│
-└────────┬─────────────┘
-         │
-         ↓ (DBT: fct_* models)
-┌──────────────────────┐
-│  PostgreSQL Gold     │
-│  ├─ fct_valuation    │
-│  ├─ fct_technical    │
-│  ├─ fct_scoring      │
-│  ├─ fct_peer         │
-│  └─ dim_companies    │
-└────────┬─────────────┘
-         │
-         ↓ (DBT: dbt test)
-┌──────────────────────┐
-│  Data Quality Tests  │
-│  ├─ Relationships    │
-│  ├─ Not null checks  │
-│  ├─ Value ranges     │
-│  └─ Custom tests     │
-└────────┬─────────────┘
-         │
-         ↓
-┌──────────────────────┐
-│  Power BI            │
-│  ├─ Dashboards       │
-│  ├─ Reports          │
-│  ├─ KPI Cards        │
-│  └─ Visualizations   │
-└──────────────────────┘
-```
+### 1. Couche Ingestion (src/ingestion/)
+
+**Fichier Principal :** `dlt_pipeline.py`
+
+**Responsabilités :**
+*   Extraction des données historiques via `yfinance`.
+*   Gestion autonome du schéma de base de données (Schema Evolution) via DLT.
+*   Chargement incrémental dans la couche Bronze PostgreSQL.
 
 ---
 
-## Component Details
+### 2. Couche Stockage (PostgreSQL)
 
-### 1. Ingestion Layer (src/ingestion/)
-
-**Files:**
-- `dlt_pipeline.py` - Main DLT pipeline orchestrator
-- `fetchers.py` - API client implementations
-- `validators.py` - Data validation logic
-
-**Responsibilities:**
-- Fetch data from multiple APIs
-- Validate data integrity
-- Handle API errors & retries
-- Load to Bronze layer
-- Maintain state for incremental loads
-
-**Flow:**
-```python
-for ticker in [INTC, CI, F, ...]:
-    price_data = yfinance.Ticker(ticker).history()
-    fundamental_data = alpha_vantage.get_fundamentals(ticker)
-    validate(price_data, fundamental_data)
-    dlt_load_to_bronze(price_data, fundamental_data)
-```
-
----
-
-### 2. Storage Layer (PostgreSQL)
-
-**Database Structure:**
-
+**Structure des Schémas :**
 ```sql
--- Bronze (Raw)
-CREATE SCHEMA bronze;
-
-CREATE TABLE bronze.raw_stock_prices (
-    ticker VARCHAR(10),
-    date DATE,
-    open DECIMAL,
-    high DECIMAL,
-    low DECIMAL,
-    close DECIMAL,
+-- Schema généré par DLT (Couche Bronze)
+CREATE TABLE bronze.stock_prices (
+    date TIMESTAMP,
+    open NUMERIC,
+    high NUMERIC,
+    low NUMERIC,
+    close NUMERIC,
     volume BIGINT,
-    adj_close DECIMAL,
-    fetched_at TIMESTAMP
+    symbol VARCHAR,
+    _dlt_load_id VARCHAR, -- Métadonnée DLT
+    _dlt_id VARCHAR       -- Métadonnée DLT
 );
 
-CREATE TABLE bronze.raw_fundamentals (
-    ticker VARCHAR(10),
-    pe_ratio DECIMAL,
-    pb_ratio DECIMAL,
-    dividend_yield DECIMAL,
-    peg_ratio DECIMAL,
-    roe DECIMAL,
-    roa DECIMAL,
-    fetched_at TIMESTAMP
-);
+-- Schema généré par dbt (Couche Silver)
+CREATE VIEW silver.stg_stock_prices AS
+    SELECT symbol, date, open, high, low, close, volume 
+    FROM bronze.stock_prices;
 
--- Silver (Cleaned)
-CREATE SCHEMA silver;
-
-CREATE TABLE silver.stg_stock_prices_clean AS
-SELECT DISTINCT * FROM bronze.raw_stock_prices;
-
--- Gold (Analytics)
-CREATE SCHEMA gold;
-
-CREATE TABLE gold.fct_valuation_metrics (
-    ticker VARCHAR(10),
-    date DATE,
-    pe_ratio DECIMAL,
-    pb_ratio DECIMAL,
-    peg_ratio DECIMAL,
-    dividend_yield DECIMAL,
-    fcf_yield DECIMAL,
-    price_to_sales DECIMAL,
-    created_at TIMESTAMP
-);
-
-CREATE TABLE gold.fct_undervaluation_scoring (
-    ticker VARCHAR(10),
-    date DATE,
-    composite_score INT,
-    grade VARCHAR(1),
-    pe_score INT,
-    peg_score INT,
-    dividend_score INT,
-    technical_score INT,
-    undervaluation_pct DECIMAL,
-    recommendation VARCHAR(20),
-    created_at TIMESTAMP
-);
+-- Schema généré par dbt (Couche Gold)
+CREATE VIEW silver.gold_stock_indicators AS
+    -- Contient les calculs analytiques (Variation, Moyenne Mobile)
 ```
 
 ---
 
-### 3. Transformation Layer (DBT)
+### 3. Couche Transformation (dbt)
 
-**Model Structure:**
-
-```
+**Structure du Projet :**
+```text
 dbt_project/models/
-├── bronze/
-│   └── stg_api_raw.sql                (Just rename columns)
-│
-├── silver/
-│   ├── stg_stock_prices.sql           (Deduplicate, validate)
-│   ├── stg_fundamentals.sql
-│   ├── stg_technical_indicators.sql
-│   └── stg_company_metrics.sql
+├── staging/
+│   └── stg_stock_prices.sql       (Nettoyage et sélection Silver)
 │
 └── gold/
-    ├── fct_valuation_metrics.sql      (P/E, P/B, PEG, etc)
-    ├── fct_technical_analysis.sql     (RSI, MACD, MAs)
-    ├── fct_undervaluation_scoring.sql (Composite 0-100)
-    ├── fct_peer_comparison.sql        (Industry benchmarks)
-    └── dim_companies.sql              (Master dimension)
+    └── gold_stock_indicators.sql  (Calculs analytiques métier)
 ```
 
-**Example Model: Undervaluation Scoring**
-
+**Exemple de Modèle (Couche Gold) :**
+Utilisation des fonctions de fenêtrage SQL pour calculer les indicateurs de trading sans perdre la granularité temporelle.
 ```sql
--- fct_undervaluation_scoring.sql
-
-with valuation as (
-    select
-        ticker,
-        date,
-        pe_ratio,
-        peg_ratio,
-        dividend_yield,
-        intrinsic_value,
-        current_price
-    from {{ ref('stg_fundamentals') }}
+with silver_data as (
+    select * from {{ ref('stg_stock_prices') }}
 ),
 
-technical as (
+analytical_indicators as (
     select
-        ticker,
+        symbol,
         date,
-        rsi
-    from {{ ref('stg_technical_indicators') }}
-),
+        close as current_price,
+        volume,
+        
+        -- Variation journalière en pourcentage
+        round(((close - open) / open * 100)::numeric, 2) as daily_variation_pct,
 
-scoring as (
-    select
-        v.ticker,
-        v.date,
-        v.current_price,
-        v.intrinsic_value,
-        
-        -- Composite Score (0-100)
-        (
-            case when v.pe_ratio < 10 then 25 else 0 end +
-            case when v.peg_ratio < 1 then 25 else 0 end +
-            case when v.dividend_yield > 2 then 25 else 0 end +
-            case when t.rsi < 30 then 25 else 0 end
-        ) as composite_score
-        
-    from valuation v
-    left join technical t
-        on v.ticker = t.ticker
-        and v.date = t.date
+        -- Moyenne mobile sur 7 jours via Window Function
+        round(avg(close) over (
+            partition by symbol 
+            order by date 
+            rows between 6 preceding and current row
+        )::numeric, 2) as moving_avg_7d
+
+    from silver_data
 )
 
-select
-    *,
-    case
-        when composite_score >= 80 then 'A'
-        when composite_score >= 60 then 'B'
-        when composite_score >= 40 then 'C'
-        when composite_score >= 20 then 'D'
-        else 'F'
-    end as grade,
-    case
-        when composite_score >= 80 then 'STRONG BUY'
-        when composite_score >= 60 then 'BUY'
-        when composite_score >= 40 then 'HOLD'
-        when composite_score >= 20 then 'SELL'
-        else 'STRONG SELL'
-    end as recommendation
-from scoring
+select * from analytical_indicators
 ```
 
 ---
 
-### 4. Visualization Layer (Power BI)
+### 4. Couche Orchestration (APScheduler)
 
-**Dashboards:**
+**Fichier Principal :** `run_scheduler.py`
 
-1. **Executive Summary**
-   - KPI cards (Top 3 undervalued, Top 3 overvalued)
-   - Key metrics overview
-   - 10-company ranking
-
-2. **Valuation Analysis**
-   - P/E ratio comparison chart
-   - Dividend yield matrix
-   - P/B and PEG rankings
-   - FCF analysis
-
-3. **Technical Analysis**
-   - Price charts (1-year)
-   - RSI indicators
-   - MACD charts
-   - Bollinger Bands
-
-4. **Undervaluation Scoring**
-   - Score distribution
-   - Grade breakdown
-   - Recommendations
-   - Risk ratings
-
-5. **Peer Comparison**
-   - Sector benchmarks
-   - Heatmap (P/E by sector)
-   - Relative valuation
-   - Individual stock details
-
----
-
-### 5. Orchestration Layer (APScheduler)
-
-**Schedule:**
-
+**Stratégie :**
+Le pipeline utilise `BlockingScheduler` pour s'exécuter de manière autonome, gérant le processus ETL complet de manière séquentielle.
 ```python
-# Daily at 4 PM UTC (after market close)
-@scheduler.scheduled_job('cron', hour=16, minute=0)
-def daily_pipeline():
-    # 1. Run DLT (fetch + load Bronze)
-    subprocess.run(['python', 'src/ingestion/dlt_pipeline.py'])
+# Exemple de logique d'orchestration
+def job_pipeline_etl():
+    # 1. Run DLT (Ingestion vers Bronze)
+    subprocess.run(["python", "src/ingestion/dlt_pipeline.py"])
     
-    # 2. Run DBT (transform)
-    subprocess.run(['dbt', 'run', '--project-dir', 'src/transformation/dbt_project'])
-    
-    # 3. Run tests (validate)
-    subprocess.run(['dbt', 'test', '--project-dir', 'src/transformation/dbt_project'])
-    
-    # 4. Log results
-    log_pipeline_status()
-    
-    # 5. Auto-refresh Power BI (if cloud)
-    # (For desktop version, manual refresh)
+    # 2. Run dbt (Transformation vers Silver puis Gold)
+    subprocess.run(["dbt", "run"], cwd="src/transformation/dbt_project")
 ```
 
 ---
 
-## Technology Stack
+## 🛠️ Stack Technologique (V1)
 
-```
-INGESTION
-├─ Python 3.8+
-├─ yfinance (Yahoo Finance API)
-├─ Alpha Vantage (Technical data)
-├─ dlt[postgres] (Data Load Tool)
-└─ requests (HTTP client)
-
-STORAGE
-├─ PostgreSQL 13+
-├─ psycopg2 (Python connector)
-└─ SQLAlchemy (ORM)
-
-TRANSFORMATION
-├─ DBT Core 1.7+
-├─ DBT Postgres adapter
-└─ Jinja2 (templating)
-
-VISUALIZATION
-├─ Power BI Desktop (free)
-└─ DAX (calculations)
-
-ORCHESTRATION
-├─ APScheduler (Python)
-└─ Logging (Python)
-
-TESTING
-└─ pytest
-```
+*   **Ingestion :** Python 3.11, `yfinance`, `dlt[postgres]`
+*   **Stockage :** PostgreSQL 13+
+*   **Transformation :** `dbt-core`, `dbt-postgres`
+*   **Orchestration :** `apscheduler`, `subprocess`
+*   **Environnement :** `python-dotenv`
 
 ---
 
-## Data Quality Assurance
+## 🚀 Évolutions Futures (Roadmap V2)
 
-**Bronze Layer:**
-- Schema validation on ingestion
-- Type checking
-- Null validation
-- API error handling
+L'architecture a été conçue de manière modulaire (Medallion) pour permettre l'intégration future des éléments suivants :
 
-**Silver Layer:**
-- Deduplication
-- Range validation (prices > 0)
-- Date validation
-- Standardization
-
-**Gold Layer:**
-- Referential integrity (FK checks)
-- Calculated field validation
-- Range checks (scores 0-100)
-- Business rule validation
-
-**DBT Tests:**
-```yaml
-# models/gold/schema.yml
-
-models:
-  - name: fct_undervaluation_scoring
-    columns:
-      - name: composite_score
-        tests:
-          - not_null
-          - accepted_values:
-              values: [0, 10, 20, ..., 100]
-          
-      - name: grade
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['A', 'B', 'C', 'D', 'F']
+1.  **Enrichissement des données sources :** Ajout des API *Alpha Vantage* ou *IEX Cloud* pour récupérer les données fondamentales (P/E ratio, dividendes).
+2.  **Couche Gold Avancée :** Création d'un système de *Scoring d'Investissement* (Note de A à F basée sur des algorithmes financiers croisés).
+3.  **Machine Learning :** Implémentation de `PyCaret` pour des prédictions de prix à 7 jours.
+4.  **Tests dbt Stricts :** Ajout du fichier `schema.yml` pour valider l'intégrité de la donnée (tests `not_null`, `unique`, ranges de valeurs).
+5.  **Dashboarding :** Connexion directe d'un rapport Power BI sur les tables Gold pour un suivi analytique en temps réel.
 ```
-
----
-
-## Performance Considerations
-
-**Indexes:**
-```sql
--- Fast lookups by ticker and date
-CREATE INDEX idx_bronze_prices_ticker_date 
-ON bronze.raw_stock_prices(ticker, date);
-
--- Fast aggregations
-CREATE INDEX idx_gold_scoring_composite
-ON gold.fct_undervaluation_scoring(composite_score DESC);
-```
-
-**Materialization:**
-- Bronze: Views (raw data, no aggregation)
-- Silver: Tables (cleaned, deduplicated)
-- Gold: Tables (aggregated, indexed)
-
----
-
-## Monitoring & Logging
-
-**Scheduler Logs:**
-```
-/data/logs/scheduler_2026_04_24.log
-
-[2026-04-24 16:00:00] Starting daily pipeline
-[2026-04-24 16:00:05] DLT: Fetching 10 companies
-[2026-04-24 16:00:30] DLT: Loaded 5,240 rows to Bronze
-[2026-04-24 16:00:35] DBT: Running transformations
-[2026-04-24 16:00:45] DBT: 15 models completed
-[2026-04-24 16:00:50] Tests: 42 tests passed
-[2026-04-24 16:00:55] Pipeline completed successfully ✅
-```
-
----
-
-## Scalability Path
-
-**Current (10 companies):**
-- ~5,000 rows/day
-- PostgreSQL single-server
-- Power BI Desktop
-
-**Future (100+ companies):**
-- Add data warehouse (Snowflake, BigQuery)
-- Implement cloud dbt (dbt Cloud)
-- Migrate to Power BI Premium
-- Add real-time streaming (Kafka)
-- Add ML models (undervaluation prediction)
-
----
-
-**Architecture is production-ready and scalable! 🚀**

@@ -178,8 +178,3 @@ ETL-STOCKS-LEARNING/
 *   [ ] Ajout d'une couche Machine Learning (PyCaret) pour la prédiction de prix à 7 jours.
 *   [ ] Déploiement de l'orchestrateur sur le Cloud.
 ```
-
-***
-
-### 💡 Le Mot du Data Engineer
-Ce README correspond à 100% à la réalité de ton code d'aujourd'hui. Remplace le contenu de ton `README.md` actuel par celui-ci, refais un commit (`git add README.md`, `git commit -m "docs: refonte du README à l'image de la V1"`, `git push`), et ton portfolio sera d'une précision chirurgicale !
