@@ -1,0 +1,4 @@
++schema: gold
+      +materialized: table
++schema: silver
+      +materialized: view
